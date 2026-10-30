@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Confluence-Helper</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <rect x="2" y="2" width="28" height="28" rx="7" class="logo-bg"/>
+      <path d="M10 12h12M10 16h12M10 20h7" class="logo-fg"/>
+    </svg>
+    <span class="brand-name">Confluence-Helper</span>
+  </div>
+  <button type="button" class="conn" id="conn" data-state="pending">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="vh">Verbindung: </span><span id="conn-text">Verbinde …</span>
+  </button>
+  <div class="ws">
+    <span class="ws-label">Arbeitsordner</span>
+    <button type="button" class="ws-path" id="ws-btn" title="Arbeitsordner ändern">
+      <span id="ws-path">…</span>
+    </button>
+  </div>
+  <button type="button" class="btn ghost quit" id="quit-btn">Beenden</button>
+</header>
+
+<div id="blocker" class="blocker" role="alert" hidden>
+  <div class="blocker-card">
+    <h2 id="blocker-title"></h2>
+    <p id="blocker-text"></p>
+  </div>
+</div>
+
+<main id="main" tabindex="-1">
+  <div id="app-notice" class="msg app-notice"></div>
+  <div class="tabs" role="tablist" aria-label="Bereiche" id="main-tabs">
+    <button type="button" role="tab" id="tab-new" aria-controls="panel-new" aria-selected="true">Neue Seite</button>
+    <button type="button" role="tab" id="tab-export" aria-controls="panel-export" aria-selected="false" tabindex="-1">Exportieren</button>
+    <button type="button" role="tab" id="tab-local" aria-controls="panel-local" aria-selected="false" tabindex="-1">Lokale Seiten</button>
+    <button type="button" role="tab" id="tab-conn" aria-controls="panel-conn" aria-selected="false" tabindex="-1">Verbindung</button>
+  </div>
+
+  <!-- 1. Neue Seite -->
+  <section class="panel" role="tabpanel" id="panel-new" aria-labelledby="tab-new" tabindex="0">
+    <div class="panel-head">
+      <h1>Neue Seite aus Datei</h1>
+      <p class="lead">PDF, Excel oder CSV umwandeln, Ergebnis prüfen und als Seite in Confluence anlegen.</p>
+    </div>
+
+    <div class="card">
+      <h2 class="step"><span class="num" aria-hidden="true">1</span> Datei wählen</h2>
+      <label class="drop" id="drop" for="file-input">
+        <input type="file" id="file-input" class="vh" accept=".pdf,.xlsx,.xlsm,.xls,.csv,.tsv">
+        <svg class="drop-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+        <span class="drop-title" id="drop-title">Datei hierher ziehen</span>
+        <span class="drop-sub">oder <span class="fake-link">auswählen</span> · PDF, Excel (.xlsx, .xlsm, .xls) oder CSV/TSV, max. 100 MB</span>
+      </label>
+
+      <div id="file-info" class="file-info" hidden>
+        <span class="file-badge" id="file-kind"></span>
+        <span class="file-name" id="file-name"></span>
+        <span class="muted" id="file-size"></span>
+      </div>
+
+      <div id="convert-opts" class="stack" hidden>
+        <fieldset id="sheets-box" class="fieldset" hidden>
+          <legend>Blätter</legend>
+          <div id="sheets" class="checks"></div>
+        </fieldset>
+        <div class="checks">
+          <label class="check" id="opt-hidden-row"><input type="checkbox" id="opt-hidden"> Ausgeblendete Blätter, Zeilen und Spalten einbeziehen</label>
+          <label class="check" id="opt-header-row"><input type="checkbox" id="opt-header" checked> Erste Zeile ist Tabellenkopf</label>
+        </div>
+        <div class="field">
+          <label for="conv-title">Überschrift am Seitenanfang <span class="opt">optional</span></label>
+          <input type="text" id="conv-title" autocomplete="off">
+        </div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="convert-btn" data-busy="Wird umgewandelt …">Umwandeln</button>
+        </div>
+      </div>
+      <div id="new-msg" class="msg"></div>
+    </div>
+
+    <div class="card" id="result-card" hidden>
+      <h2 class="step"><span class="num" aria-hidden="true">2</span> Ergebnis prüfen</h2>
+      <div class="seg" role="tablist" aria-label="Ansicht" id="view-tabs">
+        <button type="button" role="tab" id="view-preview" aria-controls="pane-preview" aria-selected="true">Vorschau</button>
+        <button type="button" role="tab" id="view-source" aria-controls="pane-source" aria-selected="false" tabindex="-1">XHTML-Quelltext</button>
+      </div>
+      <div role="tabpanel" id="pane-preview" aria-labelledby="view-preview">
+        <div class="preview-wrap">
+          <iframe id="preview" sandbox="" title="Vorschau der Seite" referrerpolicy="no-referrer"></iframe>
+        </div>
+        <p class="hint">Vereinfachte Darstellung. Makros erscheinen als beschriftete Kästen, Bilder und Anhänge als Platzhalter.</p>
+      </div>
+      <div role="tabpanel" id="pane-source" aria-labelledby="view-source" hidden>
+        <div class="editor">
+          <pre class="gutter" aria-hidden="true"></pre>
+          <textarea id="new-source" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" aria-label="XHTML-Quelltext"></textarea>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" id="new-validate" data-busy="Wird geprüft …">Prüfen</button>
+        </div>
+      </div>
+      <div id="new-problems" class="msg"></div>
+    </div>
+
+    <div class="card" id="create-card" hidden>
+      <h2 class="step"><span class="num" aria-hidden="true">3</span> In Confluence anlegen</h2>
+      <form id="create-form" class="stack" novalidate>
+        <div class="grid2">
+          <div class="field">
+            <label for="create-space">Space-Key</label>
+            <input type="text" id="create-space" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="z.B. TEAM">
+          </div>
+          <div class="field">
+            <label for="create-title">Titel</label>
+            <input type="text" id="create-title" required autocomplete="off">
+          </div>
+        </div>
+        <div class="field">
+          <label for="create-parent">Übergeordnete Seite <span class="opt">optional</span></label>
+          <input type="text" id="create-parent" autocomplete="off" spellcheck="false" placeholder="URL oder Seiten-ID" aria-describedby="create-parent-hint">
+          <p class="hint" id="create-parent-hint">Leer lassen, um die Seite auf oberster Ebene des Space anzulegen.</p>
+        </div>
+        <label class="check"><input type="checkbox" id="create-attach"> Originaldatei als Anhang an die Seite hängen</label>
+        <div class="field" id="create-message-row" hidden>
+          <label for="create-message">Kommentar zum Anhang <span class="opt">optional</span></label>
+          <input type="text" id="create-message" autocomplete="off">
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="create-btn" data-busy="Wird angelegt …">In Confluence anlegen</button>
+          <button type="button" class="btn" id="download-btn">Als Datei speichern</button>
+        </div>
+      </form>
+      <div id="create-msg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- 2. Exportieren -->
+  <section class="panel" role="tabpanel" id="panel-export" aria-labelledby="tab-export" tabindex="0" hidden>
+    <div class="panel-head">
+      <h1>Seite exportieren</h1>
+      <p class="lead">Lädt eine Seite in den Arbeitsordner, damit du sie lokal bearbeiten kannst, zum Beispiel mit Claude Desktop oder GitHub Copilot.</p>
+    </div>
+    <div class="card">
+      <form id="export-form" class="stack" novalidate>
+        <div class="field">
+          <label for="export-page">Seite</label>
+          <input type="text" id="export-page" required autocomplete="off" spellcheck="false" placeholder="https://wiki.firma.ch/display/TEAM/Seite oder 123456" aria-describedby="export-page-hint">
+          <p class="hint" id="export-page-hint">Seiten-URL aus der Adresszeile oder die Seiten-ID.</p>
+        </div>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="export-att"> Anhänge mitladen</label>
+          <label class="check"><input type="checkbox" id="export-children"> Unterseiten mitexportieren</label>
+          <div class="field inline" id="export-depth-row" hidden>
+            <label for="export-depth">Tiefe</label>
+            <input type="number" id="export-depth" min="1" step="1" inputmode="numeric" placeholder="alle" aria-describedby="export-depth-hint">
+            <span class="hint" id="export-depth-hint">Leer = alle Ebenen</span>
+          </div>
+          <label class="check"><input type="checkbox" id="export-force"> Lokale Änderungen überschreiben <span class="muted">(Sicherung als page.xhtml.bak)</span></label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="export-btn" data-busy="Wird exportiert …">Exportieren</button>
+        </div>
+      </form>
+      <div id="export-msg" class="msg"></div>
+    </div>
+    <div class="card" id="export-result" hidden>
+      <h2>Exportiert</h2>
+      <ul id="export-list" class="result-list"></ul>
+      <div id="export-log"></div>
+    </div>
+  </section>
+
+  <!-- 3. Lokale Seiten -->
+  <section class="panel" role="tabpanel" id="panel-local" aria-labelledby="tab-local" tabindex="0" hidden>
+    <div class="panel-head with-actions">
+      <div>
+        <h1>Lokale Seiten</h1>
+        <p class="lead">Alle Seiten im Arbeitsordner. Unterschiede ansehen, bearbeiten und zurückschreiben.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="local-refresh" data-busy="Wird geladen …">Aktualisieren</button>
+        <button type="button" class="btn" id="local-check" data-busy="Wird geprüft …">Serverstand prüfen</button>
+      </div>
+    </div>
+    <div class="card note ide-card">
+      <div>
+        <p><strong>Mit GitHub Copilot bearbeiten</strong></p>
+        <p class="hint">Öffnet den Arbeitsordner als Projekt in VS Code oder IntelliJ. Anweisungen für Copilot, Prompts wie <code>/seite-erweitern</code> und Aufgaben zum Prüfen und Zurückschreiben sind dort eingerichtet.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="ide-vscode" data-busy="Wird geöffnet …">In VS Code öffnen</button>
+        <button type="button" class="btn" id="ide-intellij" data-busy="Wird geöffnet …">In IntelliJ öffnen</button>
+        <button type="button" class="btn ghost" id="ide-setup" data-busy="Wird eingerichtet …">Für Copilot einrichten</button>
+      </div>
+    </div>
+    <div id="local-msg" class="msg"></div>
+    <div id="local-empty" class="empty card" hidden>
+      <p><strong>Noch keine Seiten im Arbeitsordner.</strong></p>
+      <p class="muted">Exportiere eine Seite oder lege eine neue an – sie erscheint dann hier.</p>
+    </div>
+    <div class="table-wrap card" id="local-table-wrap" hidden>
+      <table class="table" id="local-table">
+        <caption class="vh">Seiten im Arbeitsordner</caption>
+        <thead>
+          <tr>
+            <th scope="col">Seite</th>
+            <th scope="col">Version</th>
+            <th scope="col">Status</th>
+            <th scope="col"><span class="vh">Aktionen</span></th>
+          </tr>
+        </thead>
+        <tbody id="local-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. Verbindung -->
+  <section class="panel" role="tabpanel" id="panel-conn" aria-labelledby="tab-conn" tabindex="0" hidden>
+    <div class="panel-head">
+      <h1>Verbindung</h1>
+      <p class="lead">Zugangsdaten für Confluence Data Center / Server. Sie werden nur auf diesem Computer gespeichert.</p>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <div id="conn-notice" class="notice"></div>
+        <form id="conn-form" class="stack" novalidate>
+          <div class="field">
+            <label for="conn-url">Confluence-URL</label>
+            <input type="url" id="conn-url" required autocomplete="url" spellcheck="false" placeholder="https://wiki.firma.ch" aria-describedby="conn-url-hint">
+            <p class="hint" id="conn-url-hint">Basis-URL inklusive Kontextpfad, z.B. https://firma.ch/confluence</p>
+          </div>
+          <div class="field">
+            <label for="conn-profile">Profil <span class="opt">optional</span></label>
+            <input type="text" id="conn-profile" list="conn-profiles" autocomplete="off" spellcheck="false" aria-describedby="conn-profile-hint">
+            <datalist id="conn-profiles"></datalist>
+            <p class="hint" id="conn-profile-hint">Leer = Standardprofil. Mit Profilen lassen sich mehrere Server verwalten.</p>
+          </div>
+          <fieldset class="fieldset">
+            <legend>Anmeldung</legend>
+            <div class="checks">
+              <label class="check"><input type="radio" name="auth" value="token" id="auth-token" checked> Personal Access Token <span class="muted">(empfohlen)</span></label>
+              <label class="check"><input type="radio" name="auth" value="basic" id="auth-basic"> Benutzername und Passwort</label>
+            </div>
+          </fieldset>
+          <div class="field" id="token-row">
+            <label for="conn-token">Personal Access Token</label>
+            <input type="password" id="conn-token" autocomplete="off" spellcheck="false" aria-describedby="conn-token-hint">
+            <p class="hint" id="conn-token-hint"></p>
+          </div>
+          <div class="grid2" id="basic-row" hidden>
+            <div class="field">
+              <label for="conn-user">Benutzername</label>
+              <input type="text" id="conn-user" autocomplete="username" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="conn-pass">Passwort</label>
+              <input type="password" id="conn-pass" autocomplete="current-password" aria-describedby="conn-pass-hint">
+              <p class="hint" id="conn-pass-hint"></p>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn primary" id="conn-save" data-busy="Wird gespeichert …">Speichern</button>
+            <button type="button" class="btn" id="conn-test" data-busy="Wird getestet …">Verbindung testen</button>
+          </div>
+        </form>
+        <div id="conn-msg" class="msg"></div>
+        <p class="hint small">Konfigurationsdatei: <code id="conn-file">–</code></p>
+      </div>
+      <aside class="card note" aria-labelledby="pat-title">
+        <h2 id="pat-title">Personal Access Token erstellen</h2>
+        <ol>
+          <li>In Confluence oben rechts auf dein Profilbild klicken und <strong>Einstellungen</strong> wählen.</li>
+          <li><strong>Persönliche Zugriffstokens</strong> öffnen und <strong>Token erstellen</strong> wählen.</li>
+          <li>Namen vergeben, Ablaufdatum wählen und den Token kopieren. Er wird nur einmal angezeigt.</li>
+          <li>Token hier einfügen und speichern.</li>
+        </ol>
+        <p class="muted">Admin-Rechte braucht es nicht; der Token hat dieselben Rechte wie dein Benutzer. Hat der Admin Tokens deaktiviert, Benutzername und Passwort verwenden.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+<!-- Dialogs -->
+<dialog id="dlg-diff" class="dlg wide" aria-labelledby="diff-title">
+  <div class="dlg-head">
+    <div>
+      <h2 id="diff-title">Unterschiede</h2>
+      <p class="muted small" id="diff-meta"></p>
+    </div>
+    <form method="dialog"><button class="icon-btn" aria-label="Schliessen">×</button></form>
+  </div>
+  <div class="dlg-body">
+    <p class="hint small">Zeilen mit <span class="d-legend d-del">−</span> stammen vom Server, Zeilen mit <span class="d-legend d-add">+</span> aus deiner lokalen Fassung.</p>
+    <div id="diff-msg" class="msg"></div>
+    <pre class="diff" id="diff-view" tabindex="0" aria-label="Unified Diff"></pre>
+  </div>
+  <form method="dialog" class="dlg-foot"><button class="btn">Schliessen</button></form>
+</dialog>
+
+<dialog id="dlg-edit" class="dlg wide" aria-labelledby="edit-title">
+  <div class="dlg-head">
+    <div>
+      <h2 id="edit-title">Bearbeiten</h2>
+      <p class="muted small" id="edit-meta"></p>
+    </div>
+    <button type="button" class="icon-btn" id="edit-x" aria-label="Schliessen">×</button>
+  </div>
+  <div class="dlg-body">
+    <div class="editor tall">
+      <pre class="gutter" aria-hidden="true"></pre>
+      <textarea id="edit-source" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" aria-label="Inhalt von page.xhtml"></textarea>
+    </div>
+    <div id="edit-msg" class="msg"></div>
+  </div>
+  <div class="dlg-foot">
+    <span class="dirty-flag muted small" id="edit-dirty" hidden>Ungespeicherte Änderungen</span>
+    <button type="button" class="btn" id="edit-validate" data-busy="Wird geprüft …">Prüfen</button>
+    <button type="button" class="btn primary" id="edit-save" data-busy="Wird gespeichert …">Speichern</button>
+    <button type="button" class="btn" id="edit-close">Schliessen</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-push" class="dlg" aria-labelledby="push-title">
+  <div class="dlg-head">
+    <div>
+      <h2 id="push-title">Zurückschreiben</h2>
+      <p class="muted small" id="push-meta"></p>
+    </div>
+    <form method="dialog"><button class="icon-btn" aria-label="Schliessen">×</button></form>
+  </div>
+  <form id="push-form" class="dlg-body stack" novalidate>
+    <div class="field">
+      <label for="push-message">Kommentar zur Version <span class="opt">optional</span></label>
+      <input type="text" id="push-message" autocomplete="off" placeholder="z.B. Kapitel Betrieb ergänzt">
+    </div>
+    <div class="field">
+      <label for="push-new-title">Neuer Titel <span class="opt">optional</span></label>
+      <input type="text" id="push-new-title" autocomplete="off" aria-describedby="push-new-title-hint">
+      <p class="hint" id="push-new-title-hint">Leer lassen, um den Titel nicht zu ändern.</p>
+    </div>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="push-dry"> Probelauf <span class="muted">(nichts schreiben, nur zeigen was passieren würde)</span></label>
+      <label class="check"><input type="checkbox" id="push-att"> Neue oder geänderte Anhänge hochladen</label>
+    </div>
+    <div id="push-conflict" class="alert alert-warn" role="alert" hidden>
+      <p><strong>Versionskonflikt.</strong> Die Seite wurde auf dem Server seit deinem Export geändert. Zurückschreiben würde diese fremden Änderungen überschreiben.</p>
+      <p class="small" id="push-conflict-detail"></p>
+      <p class="small">Empfohlen: «Unterschiede anzeigen», dann «Server-Fassung holen». Die aktuelle Fassung vom Server ersetzt deine lokale; deine Fassung bleibt als page.xhtml.bak im Ordner. Übernimm deine Änderungen danach mit «Bearbeiten» (oder in Claude Desktop) und schreibe erneut zurück.</p>
+      <div class="actions">
+        <button type="button" class="btn" id="push-show-diff">Unterschiede anzeigen</button>
+        <button type="button" class="btn" id="push-refresh" data-busy="Wird geholt …">Server-Fassung holen …</button>
+        <button type="button" class="btn danger" id="push-force" data-busy="Wird überschrieben …">Trotzdem überschreiben …</button>
+      </div>
+    </div>
+    <div id="push-msg" class="msg"></div>
+  </form>
+  <div class="dlg-foot">
+    <button type="button" class="btn" id="push-cancel">Schliessen</button>
+    <button type="submit" form="push-form" class="btn primary" id="push-btn" data-busy="Wird geschrieben …">Zurückschreiben</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-ws" class="dlg" aria-labelledby="ws-title">
+  <form id="ws-form" novalidate>
+    <div class="dlg-head"><h2 id="ws-title">Arbeitsordner</h2></div>
+    <div class="dlg-body stack">
+      <div class="field">
+        <label for="ws-input">Pfad</label>
+        <input type="text" id="ws-input" required autocomplete="off" spellcheck="false" aria-describedby="ws-hint">
+        <p class="hint" id="ws-hint">Hier landen exportierte und neu angelegte Seiten. Der Ordner wird bei Bedarf angelegt.</p>
+      </div>
+      <div id="ws-msg" class="msg"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" id="ws-cancel">Abbrechen</button>
+      <button type="submit" class="btn primary" id="ws-save" data-busy="Wird gespeichert …">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-confirm" class="dlg narrow" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="confirm-title"></h2></div>
+    <div class="dlg-body"><p id="confirm-text"></p></div>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel" id="confirm-cancel">Abbrechen</button>
+      <button class="btn primary" value="ok" id="confirm-ok">OK</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>

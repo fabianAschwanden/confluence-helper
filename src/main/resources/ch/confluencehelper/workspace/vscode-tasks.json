@@ -1,0 +1,95 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cfh: Prüfen (aktuelle Seite)",
+      "detail": "Prüft die geöffnete page.xhtml; Fehler erscheinen unter «Probleme».",
+      "type": "process",
+      "command": "{{CFH}}",
+      "args": ["validate", "${file}"],
+      "windows": { "command": "{{WIN_COMMAND}}", "args": [{{WIN_JAR_ARGS}}"validate", "${file}"] },
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true, "showReuseMessage": false },
+      "revealProblems": "onProblem",
+      "problemMatcher": [
+        {
+          "owner": "cfh",
+          "source": "cfh",
+          "fileLocation": "absolute",
+          "severity": "error",
+          "pattern": {
+            "regexp": "^(.*?\\.xhtml):(\\d+)(?::(\\d+))?:\\s+FEHLER:\\s+(.*)$",
+            "file": 1, "line": 2, "column": 3, "message": 4
+          }
+        },
+        {
+          "owner": "cfh",
+          "source": "cfh",
+          "fileLocation": "absolute",
+          "severity": "warning",
+          "pattern": {
+            "regexp": "^(.*?\\.xhtml):(\\d+)(?::(\\d+))?:\\s+WARNUNG:\\s+(.*)$",
+            "file": 1, "line": 2, "column": 3, "message": 4
+          }
+        }
+      ]
+    },
+    {
+      "label": "cfh: Unterschiede zum Server",
+      "detail": "Vergleicht die Seite der geöffneten Datei mit der Fassung auf dem Server.",
+      "type": "process",
+      "command": "{{CFH}}",
+      "args": ["diff", "${fileDirname}"],
+      "windows": { "command": "{{WIN_COMMAND}}", "args": [{{WIN_JAR_ARGS}}"diff", "${fileDirname}"] },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "cfh: Zurückschreiben – Probelauf (aktuelle Seite)",
+      "detail": "Zeigt, was hochgeladen würde, ohne etwas zu ändern.",
+      "type": "process",
+      "command": "{{CFH}}",
+      "args": ["push", "${fileDirname}", "--attachments", "--dry-run"],
+      "windows": { "command": "{{WIN_COMMAND}}", "args": [{{WIN_JAR_ARGS}}"push", "${fileDirname}", "--attachments", "--dry-run"] },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "cfh: Zurückschreiben (aktuelle Seite)",
+      "detail": "Lädt die Seite der geöffneten Datei als neue Version nach Confluence hoch, dazu neue oder geänderte Dateien aus attachments/.",
+      "type": "process",
+      "command": "{{CFH}}",
+      "args": ["push", "${fileDirname}", "--attachments", "--require-message", "-m", "${input:pushMessage}"],
+      "windows": { "command": "{{WIN_COMMAND}}", "args": [{{WIN_JAR_ARGS}}"push", "${fileDirname}", "--attachments", "--require-message", "-m", "${input:pushMessage}"] },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "cfh: Seite exportieren",
+      "detail": "Lädt eine Confluence-Seite in diesen Arbeitsordner.",
+      "type": "process",
+      "command": "{{CFH}}",
+      "args": ["export", "${input:pageUrl}", "-o", "${workspaceFolder}"],
+      "windows": { "command": "{{WIN_COMMAND}}", "args": [{{WIN_JAR_ARGS}}"export", "${input:pageUrl}", "-o", "${workspaceFolder}"] },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "showReuseMessage": false },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pushMessage",
+      "type": "promptString",
+      "description": "Versionskommentar für Confluence (leer lassen oder Esc bricht ab, nichts wird hochgeladen)"
+    },
+    {
+      "id": "pageUrl",
+      "type": "promptString",
+      "description": "Seiten-URL oder ID der Confluence-Seite"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# Von cfh angelegt: Confluence-Seiten bleiben byte-genau, Editoren sollen sie nicht umschreiben.
+root = true
+
+[{*.xhtml,*.xhtml.bak,page.json}]
+charset = utf-8
+trim_trailing_whitespace = false

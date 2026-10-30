@@ -1,0 +1,48 @@
+#!/bin/sh
+# Starts the confluence-helper web UI (cfh ui). Builds target/cfh.jar first if it is missing.
+set -e
+
+# Resolve this script's real location, following symlinks (e.g. ~/bin/cfh-ui -> repo/bin/cfh-ui).
+script=$0
+while [ -h "$script" ]; do
+  dir=$(cd -P "$(dirname "$script")" && pwd)
+  link=$(readlink "$script")
+  case $link in
+    /*) script=$link ;;
+    *) script=$dir/$link ;;
+  esac
+done
+bin_dir=$(cd -P "$(dirname "$script")" && pwd)
+repo_dir=$(dirname "$bin_dir")
+jar="$repo_dir/target/cfh.jar"
+
+# Build when the JAR is missing, or rebuild when sources are newer (e.g. after git pull) and Maven exists.
+stale=
+if [ -f "$jar" ] && command -v mvn >/dev/null 2>&1 \
+   && [ -n "$(find "$repo_dir/pom.xml" "$repo_dir/src/main" -newer "$jar" -type f 2>/dev/null | head -n 1)" ]; then
+  stale=1
+fi
+
+if [ ! -f "$jar" ] || [ -n "$stale" ]; then
+  if command -v mvn >/dev/null 2>&1 && [ -f "$repo_dir/pom.xml" ]; then
+    if [ -n "$stale" ]; then
+      echo "cfh-ui: Quellen sind neuer als $jar, wird neu gebaut (dauert etwa eine Minute) …" >&2
+    else
+      echo "cfh-ui: $jar fehlt, wird jetzt gebaut (einmalig, dauert etwa eine Minute) …" >&2
+    fi
+    if ! (cd "$repo_dir" && mvn -q -B package -DskipTests); then
+      if [ -z "$stale" ] || [ ! -f "$jar" ]; then
+        echo "cfh-ui: Bauen fehlgeschlagen. Ausgabe oben prüfen." >&2
+        exit 1
+      fi
+      echo "cfh-ui: Neu bauen fehlgeschlagen, das bestehende JAR wird verwendet." >&2
+    fi
+  else
+    echo "cfh-ui: $jar fehlt und Maven (mvn) ist nicht installiert." >&2
+    echo "  Maven installieren und erneut starten, oder auf einem anderen Rechner bauen:" >&2
+    echo "  cd \"$repo_dir\" && mvn -q package -DskipTests" >&2
+    exit 1
+  fi
+fi
+
+exec "$bin_dir/cfh" ui "$@"

@@ -1,0 +1,25 @@
+{
+  "files.associations": {
+    "*.xhtml": "xml",
+    "*.xhtml.bak": "xml"
+  },
+  "[xml]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false,
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": false,
+    "files.insertFinalNewline": false,
+    "files.trimFinalNewlines": false
+  },
+  "files.readonlyInclude": {
+    "**/page.json": true,
+    "**/page.xhtml.bak": true
+  },
+  "chat.tools.terminal.autoApprove": {
+    "/{{CFH_APPROVE}}/": true,
+    "/--(url|profile|other-server|force)\\b/": false,
+    "/\\b(CONFLUENCE_\\w+|CFH_CONFIG)\\s*=/": false,
+    "/(^|[\\s/\\\\\"'])cfh(\\.cmd)?[\"']?\\s+(push|export|create|import|convert|ui|workspace)(\\s|$)/": false
+  }
+}

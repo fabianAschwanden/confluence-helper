@@ -1,0 +1,36 @@
+#!/bin/sh
+# Starts the confluence-helper CLI (cfh). Build first: mvn -q package -DskipTests
+set -e
+
+# Resolve this script's real location, following symlinks (e.g. ~/bin/cfh -> repo/bin/cfh).
+script=$0
+while [ -h "$script" ]; do
+  dir=$(cd -P "$(dirname "$script")" && pwd)
+  link=$(readlink "$script")
+  case $link in
+    /*) script=$link ;;
+    *) script=$dir/$link ;;
+  esac
+done
+bin_dir=$(cd -P "$(dirname "$script")" && pwd)
+repo_dir=$(dirname "$bin_dir")
+jar="$repo_dir/target/cfh.jar"
+
+if [ ! -f "$jar" ]; then
+  echo "cfh: $jar fehlt. Bitte zuerst bauen:" >&2
+  echo "  cd \"$repo_dir\" && mvn -q package -DskipTests" >&2
+  exit 1
+fi
+
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+  java_cmd=$JAVA_HOME/bin/java
+elif command -v java >/dev/null 2>&1; then
+  java_cmd=java
+else
+  echo "cfh: Java nicht gefunden. Java 21 oder neuer installieren oder JAVA_HOME setzen." >&2
+  exit 1
+fi
+
+# JAVA_OPTS is intentionally unquoted so it can hold several options.
+# shellcheck disable=SC2086
+exec "$java_cmd" $JAVA_OPTS -jar "$jar" "$@"
